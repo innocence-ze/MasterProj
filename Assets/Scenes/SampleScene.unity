@@ -326,7 +326,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4945787de7b2b0e44a90f99197db39d7, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  seed: 10
+  seed: 101
   mountainFrequency: 1
   mountainLacunarity: 2
   mountainOctaves: 4
@@ -358,6 +358,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f45e743d70623dd418ae181b187ac797, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  textures: {fileID: 11400000, guid: ac395fc846cf9f94a85909f78070db76, type: 2}
 --- !u!1 &1687258581
 GameObject:
   m_ObjectHideFlags: 0

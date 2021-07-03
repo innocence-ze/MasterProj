@@ -5,7 +5,7 @@ using UnityEngine;
 
 public class TextureGenerator : MonoBehaviour, IGenerator
 {
-    public List<MyTexture> textures = new List<MyTexture>();
+    public MyTextures textures;
     public void Clear()
     {
         textures.Clear();
@@ -17,6 +17,17 @@ public class TextureGenerator : MonoBehaviour, IGenerator
         {
             throw new NullReferenceException("Texture list is not setted");
         }
+
+        for(int i = textures.Count - 1; i >= 0; i--)
+        {
+            if(textures[i].terrainLayer == null)
+            {
+                textures.RemoveAt(i);
+            }
+        }
+
+        if (textures.Count == 0)
+            return;
 
         TerrainLayer[] terrainLayers = new TerrainLayer[textures.Count];
         for(int i = 0; i < textures.Count; i++)
@@ -40,7 +51,7 @@ public class TextureGenerator : MonoBehaviour, IGenerator
                 float scaledAngle = data.GetSteepness(scaledX, scaledZ) / 90.0f;
                 for(int k = 0; k < data.alphamapLayers; k++)
                 {
-                    textureMap[i, j, k] = textures[i].GetWeight(scaledHeight, scaledAngle, 1.0f * myData.seaDistance[i, j] / Utils.maxSeaDistance);
+                    textureMap[i, j, k] = textures[k].GetWeight(scaledHeight, scaledAngle, 1.0f * myData.seaDistance[i, j] / Utils.maxSeaDistance);
                 }
             }
         }
@@ -49,21 +60,4 @@ public class TextureGenerator : MonoBehaviour, IGenerator
     }
 
 
-
-
-
-
-    public class MyTexture
-    {
-        public TerrainLayer terrainLayer;
-        public AnimationCurve heightCurve = AnimationCurve.EaseInOut(0, 0, 1, 1);
-        public AnimationCurve angleCurve = AnimationCurve.EaseInOut(0, 0, 1, 1);
-        public AnimationCurve seaDisCurve = AnimationCurve.Linear(0, 1, 1, 1);
-        public float GetWeight(float h, float a, float s)
-        {
-            return heightCurve.Evaluate(h) * angleCurve.Evaluate(a) * seaDisCurve.Evaluate(s);
-        }
-
-        
-    }
 }

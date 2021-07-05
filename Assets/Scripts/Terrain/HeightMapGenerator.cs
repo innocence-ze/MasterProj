@@ -33,6 +33,8 @@ public class HeightMapGenerator : MonoBehaviour, IGenerator
     [SerializeField] float finalFrequency = 1;
     [Range(0, 1)]
     [SerializeField] float finalPower = 1f / 8;
+
+    //offset表示噪声图的偏移量，size表示噪声图的大小
     [SerializeField] float xOffset = 0;
     [SerializeField] float zOffset = 0;
     [Range(1,16)]
@@ -47,18 +49,47 @@ public class HeightMapGenerator : MonoBehaviour, IGenerator
         Manhattan,
     }
     public bool useFallOff = true;
-    public DistanceMode disMode;
+    public DistanceMode disMode = DistanceMode.Euclidean;
     public float disPower = 0.5f;
-    public float falloffPower = 3;
-    public float falloffRange = 3;
+    public float falloffPower = 1;
+    public float falloffRange = 10;
 
     float[,] heightData;
     int[,] seaDistance;
 
     public void Generate()
     {
-        seaDistance = TerrainManager.Singleton.myData.seaDistance;
+        seaDistance = TerrainManager.Singleton.MyData.seaDistance;
 
+        heightData = CreateOriginalHeightMap();
+        Array.Copy(heightData, TerrainManager.Singleton.MyData.elevation,heightData.Length);
+
+        if (useFallOff)
+        {
+            var falloffData = CreateFallOff();
+            for (int i = 0; i < heightData.GetLength(0); i++)
+            {
+                for (int j = 0; j < heightData.GetLength(1); j++)
+                {
+                    heightData[i, j] *= 0.6f;
+                    heightData[i, j] += 0.4f *falloffData[i, j];
+                    heightData[i, j] = Mathf.Clamp01(heightData[i, j]);
+                }
+            }
+            Debug.Log("have utilized fall off");
+        }
+        Debug.Log("height map has been generated completely");
+
+
+        SetSeaDistance();
+        Debug.Log("sea distance map has been generated completely");
+
+        TerrainManager.Singleton.Data.SetHeights(0, 0, heightData);
+
+    }
+
+    float[,] CreateOriginalHeightMap()
+    {
         var mountainTerrain = new RidgedMultifractal(mountainFrequency, mountainLacunarity, mountainOctaves, seed);
 
 
@@ -89,30 +120,8 @@ public class HeightMapGenerator : MonoBehaviour, IGenerator
         //讲noise通过Noise2D传入MyData中
         var heightMapBuilder = new Noise2D(Utils.mapSize, Utils.mapSize, finalTerrain);
         heightMapBuilder.GeneratePlanar(xOffset, xOffset + xSize, zOffset, zOffset + zSize);
-        heightMapBuilder.GetNormalizedData(out TerrainManager.Singleton.myData.finalElevation);
-        heightData = TerrainManager.Singleton.myData.finalElevation;
-        Array.Copy(heightData, TerrainManager.Singleton.myData.elevation, heightData.Length);
-
-        if (useFallOff)
-        {
-            var falloffData = CreateFallOff();
-            for (int i = 0; i < heightData.GetLength(0); i++)
-            {
-                for (int j = 0; j < heightData.GetLength(1); j++)
-                {
-                    heightData[i, j] *= 0.6f;
-                    heightData[i, j] += 0.4f *falloffData[i, j];
-                    heightData[i, j] = Mathf.Clamp01(heightData[i, j]);
-                }
-            }
-            Debug.Log("have utilized fall off");
-        }
-        Debug.Log("height map has been generated completely");
-
-
-        SetSeaDistance();
-        Debug.Log("sea distance map has been generated completely");
-
+        heightMapBuilder.GetNormalizedData(out TerrainManager.Singleton.MyData.finalElevation);
+        return TerrainManager.Singleton.MyData.finalElevation;
     }
 
     float[,] CreateFallOff()
@@ -163,7 +172,7 @@ public class HeightMapGenerator : MonoBehaviour, IGenerator
                     Utils.maxSeaDistance = 0;
                     seaDistance[i, j] = 0;
                     nodeQueue.Enqueue(i * 10000 + j);
-                    TerrainManager.Singleton.myData.type[i, j] = TerrainType.land;
+                    TerrainManager.Singleton.MyData.type[i, j] = TerrainType.land;
                 }
                 else
                 {
@@ -205,12 +214,12 @@ public class HeightMapGenerator : MonoBehaviour, IGenerator
             if (heightData[x, z] * Utils.mapHeight < Utils.seaLevel)
             {
                 seaDistance[x, z] = -1;
-                TerrainManager.Singleton.myData.type[x, z] = TerrainType.sea;
+                TerrainManager.Singleton.MyData.type[x, z] = TerrainType.sea;
             }
             else
             {
                 seaDistance[x, z] = value + 1;
-                TerrainManager.Singleton.myData.type[x, z] = TerrainType.land;
+                TerrainManager.Singleton.MyData.type[x, z] = TerrainType.land;
                 if (seaDistance[x, z] > Utils.maxSeaDistance)
                     Utils.maxSeaDistance = seaDistance[x, z];
             }
@@ -222,7 +231,7 @@ public class HeightMapGenerator : MonoBehaviour, IGenerator
 
     public void Clear()
     {
-        TerrainManager.Singleton.myData.Clear();
+        TerrainManager.Singleton.MyData.Clear();
         Debug.Log("height map has been cleared");
     }
 

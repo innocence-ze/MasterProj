@@ -29,25 +29,20 @@ public class TextureGenerator : MonoBehaviour, IGenerator
         if (textures.Count == 0)
             return;
 
-        TerrainLayer[] terrainLayers = new TerrainLayer[textures.Count];
-        for(int i = 0; i < textures.Count; i++)
-        {
-            terrainLayers[i] = textures[i].terrainLayer;
-        }
+        SetTerrainLayer();
 
-        var data = TerrainManager.Singleton.data;
-        var myData = TerrainManager.Singleton.myData;
-        data.terrainLayers = terrainLayers;
+        var data = TerrainManager.Singleton.Data;
+        var myData = TerrainManager.Singleton.MyData;
 
         float[,,] textureMap = new float[data.alphamapWidth, data.alphamapHeight, data.alphamapLayers];
         for(int i = 0; i < data.alphamapWidth; i++)
         {
             for(int j = 0; j < data.alphamapHeight; j++)
             {
-                float height = data.GetHeight(i, j);
+                float height = data.GetHeight(j, i);
                 float scaledHeight = height / data.size.y;
-                float scaledX = 1.0f * i / data.heightmapResolution;
-                float scaledZ = 1.0f * j / data.heightmapResolution;
+                float scaledX = 1.0f * j / data.heightmapResolution;
+                float scaledZ = 1.0f * i / data.heightmapResolution;
                 float scaledAngle = data.GetSteepness(scaledX, scaledZ) / 90.0f;
                 for(int k = 0; k < data.alphamapLayers; k++)
                 {
@@ -59,5 +54,16 @@ public class TextureGenerator : MonoBehaviour, IGenerator
         data.SetAlphamaps(0, 0, textureMap);
     }
 
+
+    void SetTerrainLayer()
+    {
+        TerrainLayer[] terrainLayers = new TerrainLayer[textures.Count];
+        for (int i = 0; i < textures.Count; i++)
+        {
+            terrainLayers[i] = textures[i].terrainLayer;
+        }
+
+        TerrainManager.Singleton.Data.terrainLayers = terrainLayers;
+    }
 
 }

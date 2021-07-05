@@ -313,7 +313,6 @@ MonoBehaviour:
   mapSize: 512
   mapHeight: 30
   seaLevel: 9
-  data: {fileID: 15600000, guid: 71e623dc36471b145a1062ac5baa3ece, type: 2}
 --- !u!114 &253817692
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -326,10 +325,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4945787de7b2b0e44a90f99197db39d7, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  seed: 101
+  seed: 1
   mountainFrequency: 1
   mountainLacunarity: 2
-  mountainOctaves: 4
+  mountainOctaves: 6
   flatScale: 0.125
   flatBias: -0.75
   flatFrequency: 2

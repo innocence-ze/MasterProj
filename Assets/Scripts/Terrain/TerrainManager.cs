@@ -33,19 +33,17 @@ public class TerrainManager : MonoBehaviour
         }
     }
 
-    public TerrainData data;
-    public MyTerrainData myData;
+    public TerrainData Data { get; private set; }
+    public MyTerrainData MyData { get; private set; }
 
 
     private void Start()
     {
-        UpdateTerrain();
+
     }
 
     private void OnValidate()
     {
-        data = Terrain.activeTerrain.terrainData;
-
         Utils.mapSize = Mathf.ClosestPowerOfTwo(mapSize);
         mapSize = Utils.mapSize;
 
@@ -54,26 +52,22 @@ public class TerrainManager : MonoBehaviour
             seaLevel = mapHeight;
         Utils.seaLevel = seaLevel;
 
-        if (myData == null || myData.Size != mapSize)
+        if (MyData == null || MyData.Size != mapSize)
         {
-            myData = new MyTerrainData(mapSize);
+            MyData = new MyTerrainData(mapSize);
         }
 
-    }
+        if(Data == null || Data.size != new Vector3(mapSize, mapHeight, mapSize))
+        {
+            Data = Terrain.activeTerrain.terrainData;
 
-    public void UpdateTerrain()
-    {
+            Data.heightmapResolution = mapSize + 1;
+            Data.alphamapResolution = mapSize;
+            Data.SetDetailResolution(mapSize, 8);
+            Data.size = new Vector3(mapSize, mapHeight, mapSize);
+        }
+
         transform.position = new Vector3(-mapSize / 2, -seaLevel, -mapSize / 2);
-
-        TerrainData data = Terrain.activeTerrain.terrainData;
-
-        data.heightmapResolution = mapSize + 1;
-        data.alphamapResolution = mapSize;
-        data.SetDetailResolution(mapSize, 8);
-
-        data.size = new Vector3(mapSize, mapHeight, mapSize);
-
-        data.SetHeights(0, 0, myData.finalElevation);
 
     }
 }

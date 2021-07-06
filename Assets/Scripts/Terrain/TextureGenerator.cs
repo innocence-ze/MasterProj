@@ -18,13 +18,7 @@ public class TextureGenerator : MonoBehaviour, IGenerator
             throw new NullReferenceException("Texture list is not setted");
         }
 
-        for(int i = textures.Count - 1; i >= 0; i--)
-        {
-            if(textures[i].terrainLayer == null)
-            {
-                textures.RemoveAt(i);
-            }
-        }
+        RemoveUselessLayers();
 
         if (textures.Count == 0)
             return;
@@ -35,6 +29,7 @@ public class TextureGenerator : MonoBehaviour, IGenerator
         var myData = TerrainManager.Singleton.MyData;
 
         float[,,] textureMap = new float[data.alphamapWidth, data.alphamapHeight, data.alphamapLayers];
+        float[,] textureSum = new float[data.alphamapWidth, data.alphamapHeight];
         for(int i = 0; i < data.alphamapWidth; i++)
         {
             for(int j = 0; j < data.alphamapHeight; j++)
@@ -46,7 +41,13 @@ public class TextureGenerator : MonoBehaviour, IGenerator
                 float scaledAngle = data.GetSteepness(scaledX, scaledZ) / 90.0f;
                 for(int k = 0; k < data.alphamapLayers; k++)
                 {
-                    textureMap[i, j, k] = textures[k].GetWeight(scaledHeight, scaledAngle, 1.0f * myData.seaDistance[i, j] / Utils.maxSeaDistance);
+                    textureMap[i, j, k] = textures[k].GetWeight(scaledHeight, scaledAngle, 1.0f * myData.waterDistance[i, j] / Utils.maxOceanDis);
+                    textureSum[i, j] += textureMap[i, j, k];
+                }
+                //normalized
+                for(int k = 0; k < data.alphamapLayers; k++)
+                {
+                    textureMap[i, j, k] /= textureSum[i, j];
                 }
             }
         }
@@ -64,6 +65,17 @@ public class TextureGenerator : MonoBehaviour, IGenerator
         }
 
         TerrainManager.Singleton.Data.terrainLayers = terrainLayers;
+    }
+
+    void RemoveUselessLayers()
+    {
+        for (int i = textures.Count - 1; i >= 0; i--)
+        {
+            if (textures[i].terrainLayer == null)
+            {
+                textures.RemoveAt(i);
+            }
+        }
     }
 
 }

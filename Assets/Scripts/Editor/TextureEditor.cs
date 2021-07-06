@@ -10,7 +10,12 @@ public class TextureEditor : Editor
     public override void OnInspectorGUI()
     {
         var gen = (TextureGenerator)target;
-        gen.textures = EditorGUILayout.ObjectField(gen.textures, typeof(MyTextures), false) as MyTextures;
+
+        if(DrawDefaultInspector())
+        {
+
+        }
+
         if (gen.textures != null)
         {
 

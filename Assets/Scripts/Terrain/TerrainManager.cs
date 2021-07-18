@@ -13,7 +13,7 @@ public class TerrainManager : MonoBehaviour
     [Range(1, 100)]
     public int mapHeight = 30;
     [Range(0, 100)]
-    public int seaLevel;
+    public int seaLevel = 9;
 
 
     private static TerrainManager singleton = null;
@@ -35,7 +35,8 @@ public class TerrainManager : MonoBehaviour
 
     public TerrainData Data { get; private set; }
     public MyTerrainData MyData { get; private set; }
-
+    //[HideInInspector]
+    public bool heightMapGenerated = false;
 
     private void Start()
     {

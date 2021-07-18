@@ -41,7 +41,7 @@ public class HeightMapGenerator : MonoBehaviour, IGenerator
     [SerializeField] float xSize = 8;
     [Range(1,16)]
     [SerializeField] float zSize = 8;
-
+    [SerializeField] bool oceanGenerator = false;
     public enum DistanceMode
     {
         Diagonal,
@@ -84,18 +84,10 @@ public class HeightMapGenerator : MonoBehaviour, IGenerator
 
         SetOceanDistance();
         Debug.Log("ocean Count:" + TerrainManager.Singleton.MyData.GetOceanCount());
-        int count = 0;
-        for(int i = 0; i<oceanDis.GetLength(0);i++)
-            for(int j = 0; j < oceanDis.GetLength(1); j++)
-            {
-                if (oceanDis[i, j] == 0)
-                    count++;
-            }
-        Debug.Log("water count" + count);
         Debug.Log("sea distance map has been generated completely");
 
         TerrainManager.Singleton.Data.SetHeights(0, 0, heightData);
-
+        TerrainManager.Singleton.heightMapGenerated = true;
     }
 
     float[,] CreateOriginalHeightMap()
@@ -225,29 +217,33 @@ public class HeightMapGenerator : MonoBehaviour, IGenerator
             {
                 oceanDis[x, z] = -1;
                 TerrainManager.Singleton.MyData.type[x, z] = TerrainType.ocean;
-                int index1 = -1;
-                GetSurOceanIndex(out int L, out int R, out int U, out int D, out int LU, out int LD, out int RU, out int RD, new Vector2Int(x, z));
-                int[] surIndex = new int[8] { L, R, U, D, LU, LD, RU, RD };
-                for (int i = 7; i >= 0; i--)
+                if (oceanGenerator)
                 {
-                    if (surIndex[i] != -1)
+
+
+                    int index1 = -1;
+                    GetSurOceanIndex(out int L, out int R, out int U, out int D, out int LU, out int LD, out int RU, out int RD, new Vector2Int(x, z));
+                    int[] surIndex = new int[8] { L, R, U, D, LU, LD, RU, RD };
+                    for (int i = 7; i >= 0; i--)
                     {
-                        if (index1 == -1)
+                        if (surIndex[i] != -1)
                         {
-                            index1 = surIndex[i];
-                            TerrainManager.Singleton.MyData.AddToCurOcean(index1, new Vector2Int(x, z));
-                        }
-                        else
-                        {
-                            int index2 = index1 < surIndex[i] ? surIndex[i] : index1;
-                            index1 = index2 == surIndex[i] ? index1 : surIndex[i];
-                            TerrainManager.Singleton.MyData.CombineOcean(index1, index2);
+                            if (index1 == -1)
+                            {
+                                index1 = surIndex[i];
+                                TerrainManager.Singleton.MyData.AddToCurOcean(index1, new Vector2Int(x, z));
+                            }
+                            else
+                            {
+                                var r = TerrainManager.Singleton.MyData.CombineOcean(index1, surIndex[i]);
+                                index1 = r == -1 ? index1 : r;
+                            }
                         }
                     }
-                }
 
-                if (index1 == -1)
-                    TerrainManager.Singleton.MyData.AddNewOcean(new Vector2Int(x, z));
+                    if (index1 == -1)
+                        TerrainManager.Singleton.MyData.AddNewOcean(new Vector2Int(x, z));
+                }
 
             }
             else
@@ -278,21 +274,9 @@ public class HeightMapGenerator : MonoBehaviour, IGenerator
 
     public void Clear()
     {
+        TerrainManager.Singleton.heightMapGenerated = false;
         TerrainManager.Singleton.MyData.Clear();
         Debug.Log("height map has been cleared");
-    }
-
-    private void OnDrawGizmos()
-    {
-        if(oceanDis!=null)
-            for (int i = 0; i < oceanDis.GetLength(0); i++)
-            {
-                for (int j = 0; j < oceanDis.GetLength(1); j++)
-                {
-                    if (oceanDis[i, j] <= 0) Gizmos.DrawCube(transform.position + new Vector3(i, 15, j), Vector3.one);
-
-                }
-            }
     }
 
 }

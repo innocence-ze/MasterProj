@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: TerrainTextures
   m_EditorClassIdentifier: 
   textures:
-  - terrainLayer: {fileID: 8574412962073106934, guid: 34a7124a250b6314f803cba5555e7faa, type: 2}
+  - terrainLayer: {fileID: 8574412962073106934, guid: 2c12b7175f162c74e9b3c6051456f55b, type: 2}
     heightCurve:
       serializedVersion: 2
       m_Curve:
@@ -95,7 +95,7 @@ MonoBehaviour:
       m_PreInfinity: 2
       m_PostInfinity: 2
       m_RotationOrder: 4
-  - terrainLayer: {fileID: 8574412962073106934, guid: 716937fe861ba6748bfd599e6802e70a, type: 2}
+  - terrainLayer: {fileID: 8574412962073106934, guid: d7d1a32506f45c747a99392577b63427, type: 2}
     heightCurve:
       serializedVersion: 2
       m_Curve:
@@ -177,7 +177,7 @@ MonoBehaviour:
       m_PreInfinity: 2
       m_PostInfinity: 2
       m_RotationOrder: 4
-  - terrainLayer: {fileID: 8574412962073106934, guid: c25f012d8eaba684b9a392d71f427372, type: 2}
+  - terrainLayer: {fileID: 8574412962073106934, guid: 77de16947a3b71946b607d2d1ef18dcb, type: 2}
     heightCurve:
       serializedVersion: 2
       m_Curve:
@@ -259,7 +259,7 @@ MonoBehaviour:
       m_PreInfinity: 2
       m_PostInfinity: 2
       m_RotationOrder: 4
-  - terrainLayer: {fileID: 8574412962073106934, guid: 6a3097ee6a39c594e8c63dae726b2278, type: 2}
+  - terrainLayer: {fileID: 8574412962073106934, guid: 9a1302801f8d93645b1303e5944896e5, type: 2}
     heightCurve:
       serializedVersion: 2
       m_Curve:
@@ -273,8 +273,17 @@ MonoBehaviour:
         inWeight: 0
         outWeight: 0
       - serializedVersion: 3
+        time: 0.7
+        value: 0.9
+        inSlope: -0.011202781
+        outSlope: -0.011202781
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0.33333334
+        outWeight: 0.745547
+      - serializedVersion: 3
         time: 1
-        value: 1
+        value: 0
         inSlope: 0
         outSlope: 0
         tangentMode: 0
@@ -297,14 +306,187 @@ MonoBehaviour:
         inWeight: 0
         outWeight: 0.1392056
       - serializedVersion: 3
+        time: 1
+        value: 0
+        inSlope: 0
+        outSlope: 0
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      m_PreInfinity: 2
+      m_PostInfinity: 2
+      m_RotationOrder: 4
+    seaDisCurve:
+      serializedVersion: 2
+      m_Curve:
+      - serializedVersion: 3
+        time: 0
+        value: 0
+        inSlope: 2
+        outSlope: 2
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      - serializedVersion: 3
         time: 0.5
-        value: 0.8
-        inSlope: -1.5076655
-        outSlope: -1.5076655
+        value: 0.7
+        inSlope: 0.98181486
+        outSlope: 0.98181486
         tangentMode: 0
         weightedMode: 0
         inWeight: 0.33333334
         outWeight: 0.33333334
+      - serializedVersion: 3
+        time: 1
+        value: 1
+        inSlope: 0
+        outSlope: 0
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      m_PreInfinity: 2
+      m_PostInfinity: 2
+      m_RotationOrder: 4
+  - terrainLayer: {fileID: 8574412962073106934, guid: 81063928f16ce2a4192e5db5aaf55f87, type: 2}
+    heightCurve:
+      serializedVersion: 2
+      m_Curve:
+      - serializedVersion: 3
+        time: 0
+        value: 0
+        inSlope: 0
+        outSlope: 0
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      - serializedVersion: 3
+        time: 0.4
+        value: 0.9
+        inSlope: -0.009740102
+        outSlope: -0.009740102
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0.33333334
+        outWeight: 0.36750275
+      - serializedVersion: 3
+        time: 1
+        value: 0
+        inSlope: 0
+        outSlope: 0
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      m_PreInfinity: 2
+      m_PostInfinity: 2
+      m_RotationOrder: 4
+    angleCurve:
+      serializedVersion: 2
+      m_Curve:
+      - serializedVersion: 3
+        time: 0
+        value: 1
+        inSlope: -0.0658699
+        outSlope: -0.0658699
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0.1392056
+      - serializedVersion: 3
+        time: 1
+        value: 0
+        inSlope: 0
+        outSlope: 0
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      m_PreInfinity: 2
+      m_PostInfinity: 2
+      m_RotationOrder: 4
+    seaDisCurve:
+      serializedVersion: 2
+      m_Curve:
+      - serializedVersion: 3
+        time: 0
+        value: 0
+        inSlope: 2
+        outSlope: 2
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      - serializedVersion: 3
+        time: 0.5
+        value: 0.7
+        inSlope: 1.0292436
+        outSlope: 1.0292436
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0.33333334
+        outWeight: 0.33333334
+      - serializedVersion: 3
+        time: 1
+        value: 1
+        inSlope: 0
+        outSlope: 0
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      m_PreInfinity: 2
+      m_PostInfinity: 2
+      m_RotationOrder: 4
+  - terrainLayer: {fileID: 8574412962073106934, guid: 9d8f696ca5827e44ebd00ca31d6b3395, type: 2}
+    heightCurve:
+      serializedVersion: 2
+      m_Curve:
+      - serializedVersion: 3
+        time: 0
+        value: 0
+        inSlope: 0
+        outSlope: 0
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      - serializedVersion: 3
+        time: 0.7
+        value: 0.9
+        inSlope: -0.009740102
+        outSlope: -0.009740102
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0.33333334
+        outWeight: 0.36750275
+      - serializedVersion: 3
+        time: 1
+        value: 0
+        inSlope: 0
+        outSlope: 0
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      m_PreInfinity: 2
+      m_PostInfinity: 2
+      m_RotationOrder: 4
+    angleCurve:
+      serializedVersion: 2
+      m_Curve:
+      - serializedVersion: 3
+        time: 0
+        value: 1
+        inSlope: -0.0658699
+        outSlope: -0.0658699
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0.1392056
       - serializedVersion: 3
         time: 1
         value: 0
@@ -323,6 +505,73 @@ MonoBehaviour:
       - serializedVersion: 3
         time: 0
         value: 1
+        inSlope: -2.4916446
+        outSlope: -2.4916446
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0.09146341
+      - serializedVersion: 3
+        time: 0.5
+        value: 0.3
+        inSlope: -1.0075573
+        outSlope: -1.0075573
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0.33333334
+        outWeight: 0.2118901
+      - serializedVersion: 3
+        time: 1
+        value: 0
+        inSlope: -0.50113565
+        outSlope: -0.50113565
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0.21646357
+        outWeight: 0
+      m_PreInfinity: 2
+      m_PostInfinity: 2
+      m_RotationOrder: 4
+  - terrainLayer: {fileID: 8574412962073106934, guid: 49460fe8fc6287d4ea939667dc36fdbc, type: 2}
+    heightCurve:
+      serializedVersion: 2
+      m_Curve:
+      - serializedVersion: 3
+        time: 0
+        value: 0
+        inSlope: 0
+        outSlope: 0
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      - serializedVersion: 3
+        time: 0.4
+        value: 0.9
+        inSlope: -0.009740102
+        outSlope: -0.009740102
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0.33333334
+        outWeight: 0.36750275
+      - serializedVersion: 3
+        time: 1
+        value: 0
+        inSlope: 0
+        outSlope: 0
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      m_PreInfinity: 2
+      m_PostInfinity: 2
+      m_RotationOrder: 4
+    angleCurve:
+      serializedVersion: 2
+      m_Curve:
+      - serializedVersion: 3
+        time: 0
+        value: 1
         inSlope: 0
         outSlope: 0
         tangentMode: 0
@@ -331,7 +580,40 @@ MonoBehaviour:
         outWeight: 0
       - serializedVersion: 3
         time: 1
+        value: 0
+        inSlope: 0
+        outSlope: 0
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      m_PreInfinity: 2
+      m_PostInfinity: 2
+      m_RotationOrder: 4
+    seaDisCurve:
+      serializedVersion: 2
+      m_Curve:
+      - serializedVersion: 3
+        time: 0
         value: 1
+        inSlope: -1.9434822
+        outSlope: -1.9434822
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0.18292682
+      - serializedVersion: 3
+        time: 0.5
+        value: 0.3
+        inSlope: -1.4998288
+        outSlope: -1.4998288
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0.33333334
+        outWeight: 0.33333334
+      - serializedVersion: 3
+        time: 1
+        value: 0
         inSlope: 0
         outSlope: 0
         tangentMode: 0

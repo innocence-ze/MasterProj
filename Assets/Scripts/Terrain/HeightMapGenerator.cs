@@ -9,7 +9,7 @@ using System;
 [RequireComponent(typeof(TerrainManager))]
 public class HeightMapGenerator : MonoBehaviour, IGenerator
 {
-    public int seed = 0;
+    [Header("NoisePara")]
     [Range(0,4)]
     public float mountainFrequency = 1;
     [Range(0, 4)]
@@ -34,6 +34,7 @@ public class HeightMapGenerator : MonoBehaviour, IGenerator
     [Range(0, 1)]
     [SerializeField] float finalPower = 1f / 8;
 
+    [Header("NoiseMapPara")]
     //offset表示噪声图的偏移量，size表示噪声图的大小
     [SerializeField] float xOffset = 0;
     [SerializeField] float zOffset = 0;
@@ -41,70 +42,93 @@ public class HeightMapGenerator : MonoBehaviour, IGenerator
     [SerializeField] float xSize = 8;
     [Range(1,16)]
     [SerializeField] float zSize = 8;
-    [SerializeField] bool oceanGenerator = false;
     public enum DistanceMode
     {
         Diagonal,
         Euclidean,
         Manhattan,
     }
+    [Header("fallOff")]
     public bool useFallOff = true;
     public DistanceMode disMode = DistanceMode.Euclidean;
     public float disPower = 0.5f;
     public float falloffPower = 1;
     public float falloffRange = 10;
 
+    MyTerrainData myData;
+    TerrainData data;
     float[,] heightData;
     int[,] oceanDis;
+    readonly HashSet<Vector2Int> originalOceanSet = new HashSet<Vector2Int>();
+
+    private void OnDrawGizmos()
+    {
+        if (myData == null) return;
+        Gizmos.color = Color.red;
+        //for (int i = 0; i < oceanDis.GetLength(0); i++)
+        //{
+        //    for (int j = 0; j < oceanDis.GetLength(1); j++)
+        //    {
+        //        if (oceanDis[i, j] >= 0)
+        //        {
+        //            Gizmos.DrawCube(new Vector3(j - Utils.mapSize / 2, 50, i - Utils.mapSize / 2), Vector3.one);
+        //        }
+        //    }
+        //}
+    }
 
     public void Generate()
     {
-        oceanDis = TerrainManager.Singleton.MyData.waterDistance;
+        Clear();
 
-        TerrainManager.Singleton.MyData.finalElevation = CreateOriginalHeightMap();
-        heightData = TerrainManager.Singleton.MyData.finalElevation;
-        Array.Copy(heightData, TerrainManager.Singleton.MyData.elevation,heightData.Length);
+        myData = TerrainManager.Singleton.MyData;
+        data = TerrainManager.Singleton.Data;
+        oceanDis = myData.waterDistance;
 
-        if (useFallOff)
+        myData.finalElevation = CreateOriginalHeightMap();
+        heightData = myData.finalElevation;
+
+        var falloffData = CreateFallOff();
+
+        for (int i = 0; i < heightData.GetLength(0); i++)
         {
-            var falloffData = CreateFallOff();
-            for (int i = 0; i < heightData.GetLength(0); i++)
+            for (int j = 0; j < heightData.GetLength(1); j++)
             {
-                for (int j = 0; j < heightData.GetLength(1); j++)
-                {
-                    heightData[i, j] *= 0.6f;
-                    heightData[i, j] += 0.4f * falloffData[i, j];
-                    heightData[i, j] = Mathf.Clamp01(heightData[i, j]);
-                }
+                heightData[i, j] *= 0.6f;
+                heightData[i, j] += 0.4f * falloffData[i, j];
+                heightData[i, j] = Mathf.Clamp01(heightData[i, j]);
+                if (heightData[i, j] * Utils.mapHeight <= Utils.seaLevel)
+                    originalOceanSet.Add(new Vector2Int(i, j));
             }
-            Debug.Log("have utilized fall off");
         }
         Debug.Log("height map has been generated completely");
 
+        FindOcean();
 
         SetOceanDistance();
-        Debug.Log("ocean Count:" + TerrainManager.Singleton.MyData.GetOceanCount());
         Debug.Log("sea distance map has been generated completely");
 
-        TerrainManager.Singleton.Data.SetHeights(0, 0, heightData);
-        TerrainManager.Singleton.heightMapGenerated = true;
+        SetMainLand();
+
+        data.SetHeights(0, 0, heightData);
+
     }
 
     float[,] CreateOriginalHeightMap()
     {
-        var mountainTerrain = new RidgedMultifractal(mountainFrequency, mountainLacunarity, mountainOctaves, seed);
+        var mountainTerrain = new RidgedMultifractal(mountainFrequency, mountainLacunarity, mountainOctaves, Utils.Seed);
 
 
         var flatTerrain = new ScaleBias(flatScale, flatBias,
             new Billow
             {
-                Seed = seed,
+                Seed = Utils.Seed,
                 Frequency = flatFrequency
             });
 
         var terrainType = new Perlin
         {
-            Seed = seed,
+            Seed = Utils.Seed,
             Frequency = 0.5,
             Persistence = 0.25
         };
@@ -114,7 +138,7 @@ public class HeightMapGenerator : MonoBehaviour, IGenerator
         terrainSelector.SetBounds(0, 1000);
         terrainSelector.FallOff = 0.125f;
 
-        var finalTerrain = new Turbulence(new Perlin(seed), new Perlin(seed), new Perlin(seed), finalPower, terrainSelector)
+        var finalTerrain = new Turbulence(new Perlin(Utils.Seed), new Perlin(Utils.Seed), new Perlin(Utils.Seed), finalPower, terrainSelector)
         {
             Frequency = finalFrequency
         };
@@ -159,22 +183,88 @@ public class HeightMapGenerator : MonoBehaviour, IGenerator
     }
 
 
+    void FindOcean()
+    {
+        int x = heightData.GetLength(0), z = heightData.GetLength(1);
+        var tempQueue = new Queue<Vector2Int>();
+        for(int i = 0; i < x - 1; i++)
+        {
+            Vector2Int v1 = new Vector2Int(i, 0), v2 = new Vector2Int(x - 1 - i, z - 1),
+                       v3 = new Vector2Int(0, z - 1 - i), v4 = new Vector2Int(x - 1, i);
+            SetCurOcean(v1, tempQueue);
+            SetCurOcean(v2, tempQueue);
+            SetCurOcean(v3, tempQueue);
+            SetCurOcean(v4, tempQueue);
+        }
+
+        while (tempQueue.Count > 0)
+        {
+            var peekVec = tempQueue.Dequeue();
+            myData.AddOceanGrid(peekVec);
+            SetCurOcean(peekVec + Vector2Int.right, tempQueue);
+            SetCurOcean(peekVec + Vector2Int.left, tempQueue);
+            SetCurOcean(peekVec + Vector2Int.up, tempQueue);
+            SetCurOcean(peekVec + Vector2Int.down, tempQueue);
+            SetCurOcean(peekVec + Vector2Int.right + Vector2Int.up, tempQueue);
+            SetCurOcean(peekVec + Vector2Int.right + Vector2Int.down, tempQueue);
+            SetCurOcean(peekVec + Vector2Int.left + Vector2Int.up, tempQueue);
+            SetCurOcean(peekVec + Vector2Int.left + Vector2Int.down, tempQueue);
+        }
+
+        AdjustHeight();
+    }
+
+    void SetCurOcean(Vector2Int cooridinate, Queue<Vector2Int> tempQue)
+    {
+        if (originalOceanSet.Contains(cooridinate))
+        {
+            originalOceanSet.Remove(cooridinate);
+            tempQue.Enqueue(cooridinate);
+        }
+    }
+
+    void AdjustHeight()
+    {
+        foreach(var vec in originalOceanSet)
+        {
+            heightData[vec.x, vec.y] = (Utils.seaLevel + 1.2f) / Utils.mapHeight;
+            if (IsAdjustPos(vec + Vector2Int.right)) AvgCurPos(vec + Vector2Int.right);
+            if (IsAdjustPos(vec + Vector2Int.left)) AvgCurPos(vec + Vector2Int.left);
+            if (IsAdjustPos(vec + Vector2Int.up)) AvgCurPos(vec + Vector2Int.up);
+            if (IsAdjustPos(vec + Vector2Int.down)) AvgCurPos(vec + Vector2Int.down);
+            if (IsAdjustPos(vec + Vector2Int.right + Vector2Int.up)) AvgCurPos(vec + Vector2Int.right + Vector2Int.up);
+            if (IsAdjustPos(vec + Vector2Int.right + Vector2Int.down)) AvgCurPos(vec + Vector2Int.right + Vector2Int.down);
+            if (IsAdjustPos(vec + Vector2Int.left + Vector2Int.up)) AvgCurPos(vec + Vector2Int.left + Vector2Int.up);
+            if (IsAdjustPos(vec + Vector2Int.left + Vector2Int.down)) AvgCurPos(vec + Vector2Int.left + Vector2Int.down);
+        }
+    }
+
+    bool IsAdjustPos(Vector2Int cooridinate) => !originalOceanSet.Contains(cooridinate) && !myData.ContainOceanGrid(cooridinate);
+
+    void AvgCurPos(Vector2Int cooridinate)
+    {
+        int x = cooridinate.x, z = cooridinate.y;
+        if (x <= 0 || x >= heightData.GetLength(0) - 1 || z <= 0 || z >= heightData.GetLength(1) - 1)
+            return;
+        heightData[x, z] = (heightData[x - 1, z - 1] + heightData[x - 1, z] + heightData[x - 1, z + 1] +
+                            heightData[x, z - 1]     + heightData[x, z]     + heightData[x, z + 1] +
+                            heightData[x + 1, z - 1] + heightData[x + 1, z] + heightData[x + 1, z + 1]) / 9;
+    }
+
     void SetOceanDistance()
     {
+        Queue<Vector2Int> nodeQueue = new Queue<Vector2Int>();
+        Utils.maxOceanDis = 0;
 
-        //x*10000+z
-        Queue<int> nodeQueue = new Queue<int>();
-
-        for(int i = 0; i < oceanDis.GetLength(0); i++)
+        for (int i = 0; i < oceanDis.GetLength(0); i++)
         {
             for(int j = 0; j < oceanDis.GetLength(1); j++)
             {
-                if (Mathf.Abs(heightData[j, i] * Utils.mapHeight - Utils.seaLevel) < 0.05f)
+                if (myData.ContainOceanGrid(i, j))
                 {
-                    Utils.maxOceanDis = 0;
-                    oceanDis[i, j] = 0;
-                    nodeQueue.Enqueue(i * 10000 + j);
-                    TerrainManager.Singleton.MyData.type[i, j] = TerrainType.land;
+                    oceanDis[i, j] = -1;
+                    nodeQueue.Enqueue(new Vector2Int(i,j));
+                    myData.type[i, j] = TerrainType.ocean;
                 }
                 else
                 {
@@ -184,24 +274,17 @@ public class HeightMapGenerator : MonoBehaviour, IGenerator
         }
         while (nodeQueue.Count > 0)
         {
-            int number = nodeQueue.Dequeue();
-            int x = number / 10000, z = number % 10000, value = oceanDis[x, z], x1, z1;
+            var node = nodeQueue.Dequeue();
+            int x = node.x, z = node.y, value = oceanDis[x, z];
 
-            x1 = x; z1 = z - 1;
-            if (SetCurOceanDistance(x1, z1, value))
-                nodeQueue.Enqueue(x1 * 10000 + z1);
-
-            x1 = x; z1 = z + 1;
-            if (SetCurOceanDistance(x1, z1, value))
-                nodeQueue.Enqueue(x1 * 10000 + z1);
-
-            x1 = x - 1; z1 = z;
-            if (SetCurOceanDistance(x1, z1, value))
-                nodeQueue.Enqueue(x1 * 10000 + z1);
-
-            x1 = x + 1; z1 = z;
-            if (SetCurOceanDistance(x1, z1, value))
-                nodeQueue.Enqueue(x1 * 10000 + z1);
+            if (SetCurOceanDistance(x - 1,  z - 1,  value))     nodeQueue.Enqueue(new Vector2Int(x - 1, z - 1));
+            if (SetCurOceanDistance(x - 1,  z,      value))     nodeQueue.Enqueue(new Vector2Int(x - 1, z));
+            if (SetCurOceanDistance(x - 1,  z + 1,  value))     nodeQueue.Enqueue(new Vector2Int(x - 1, z + 1));
+            if (SetCurOceanDistance(x,      z - 1,  value))     nodeQueue.Enqueue(new Vector2Int(x,     z - 1));
+            if (SetCurOceanDistance(x,      z + 1,  value))     nodeQueue.Enqueue(new Vector2Int(x,     z + 1));
+            if (SetCurOceanDistance(x + 1,  z - 1,  value))     nodeQueue.Enqueue(new Vector2Int(x + 1, z - 1));
+            if (SetCurOceanDistance(x + 1,  z,      value))     nodeQueue.Enqueue(new Vector2Int(x + 1, z));
+            if (SetCurOceanDistance(x + 1,  z + 1,  value))     nodeQueue.Enqueue(new Vector2Int(x + 1, z + 1));
         }
     }
 
@@ -213,70 +296,64 @@ public class HeightMapGenerator : MonoBehaviour, IGenerator
         }
         if (oceanDis[x, z] == int.MinValue)
         {
-            if (heightData[z, x] * Utils.mapHeight < Utils.seaLevel)
-            {
-                oceanDis[x, z] = -1;
-                TerrainManager.Singleton.MyData.type[x, z] = TerrainType.ocean;
-                if (oceanGenerator)
-                {
-
-
-                    int index1 = -1;
-                    GetSurOceanIndex(out int L, out int R, out int U, out int D, out int LU, out int LD, out int RU, out int RD, new Vector2Int(x, z));
-                    int[] surIndex = new int[8] { L, R, U, D, LU, LD, RU, RD };
-                    for (int i = 7; i >= 0; i--)
-                    {
-                        if (surIndex[i] != -1)
-                        {
-                            if (index1 == -1)
-                            {
-                                index1 = surIndex[i];
-                                TerrainManager.Singleton.MyData.AddToCurOcean(index1, new Vector2Int(x, z));
-                            }
-                            else
-                            {
-                                var r = TerrainManager.Singleton.MyData.CombineOcean(index1, surIndex[i]);
-                                index1 = r == -1 ? index1 : r;
-                            }
-                        }
-                    }
-
-                    if (index1 == -1)
-                        TerrainManager.Singleton.MyData.AddNewOcean(new Vector2Int(x, z));
-                }
-
-            }
-            else
-            {
-                oceanDis[x, z] = value + 1;
-                TerrainManager.Singleton.MyData.type[x, z] = TerrainType.land;
-                if (oceanDis[x, z] > Utils.maxOceanDis)
-                    Utils.maxOceanDis = oceanDis[x, z];
-            }
+            oceanDis[x, z] = value + 1;
+            myData.type[x, z] = TerrainType.land;
+            if (oceanDis[x, z] > Utils.maxOceanDis)
+                Utils.maxOceanDis = oceanDis[x, z];
             return true;
         }
         else
             return false;
     }
 
-    void GetSurOceanIndex(out int indexL, out int indexR, out int indexU, out int indexD, out int indexLU, out int indexLD, out int indexRU, out int indexRD, Vector2Int curCoor)
+    void SetMainLand()
     {
-        var d = TerrainManager.Singleton.MyData;
-        indexL = d.GetCurOceanIndex(curCoor + Vector2Int.left);
-        indexR = d.GetCurOceanIndex(curCoor + Vector2Int.right);
-        indexU = d.GetCurOceanIndex(curCoor + Vector2Int.up);
-        indexD = d.GetCurOceanIndex(curCoor + Vector2Int.down);
-        indexLU = d.GetCurOceanIndex(curCoor + Vector2Int.left + Vector2Int.up);
-        indexLD = d.GetCurOceanIndex(curCoor + Vector2Int.left + Vector2Int.down);
-        indexRU = d.GetCurOceanIndex(curCoor + Vector2Int.right + Vector2Int.up);
-        indexRD = d.GetCurOceanIndex(curCoor + Vector2Int.right + Vector2Int.down);
+        Queue<Vector2Int> nodeQueue = new Queue<Vector2Int>();
+        myData.AddMainLandGrid(new Vector2Int(Utils.mapSize / 2, Utils.mapSize / 2));
+        nodeQueue.Enqueue(new Vector2Int(Utils.mapSize / 2, Utils.mapSize / 2));
+
+        while (nodeQueue.Count > 0)
+        {
+            var node = nodeQueue.Dequeue();
+            int x = node.x, z = node.y;
+
+            if (myData.waterDistance[x, z] == 0) myData.AddLandContourGrid(node);
+
+            if (SetCurMainLand(x - 1, z - 1)) nodeQueue.Enqueue(new Vector2Int(x - 1, z - 1));
+            if (SetCurMainLand(x - 1, z)) nodeQueue.Enqueue(new Vector2Int(x - 1, z));
+            if (SetCurMainLand(x - 1, z + 1)) nodeQueue.Enqueue(new Vector2Int(x - 1, z + 1));
+            if (SetCurMainLand(x, z - 1)) nodeQueue.Enqueue(new Vector2Int(x, z - 1));
+            if (SetCurMainLand(x, z + 1)) nodeQueue.Enqueue(new Vector2Int(x, z + 1));
+            if (SetCurMainLand(x + 1, z - 1)) nodeQueue.Enqueue(new Vector2Int(x + 1, z - 1));
+            if (SetCurMainLand(x + 1, z)) nodeQueue.Enqueue(new Vector2Int(x + 1, z));
+            if (SetCurMainLand(x + 1, z + 1)) nodeQueue.Enqueue(new Vector2Int(x + 1, z + 1));
+        }
+
+    }
+
+    bool SetCurMainLand(int x, int z)
+    {
+        if (x < 0 || x >= Utils.mapSize || z < 0 || z >= Utils.mapSize)
+        {
+            return false;
+        }
+        if (myData.type[x, z] == TerrainType.land && !myData.ContainMainLandGrid(x, z))
+        {
+            myData.AddMainLandGrid(x, z);
+            return true;
+        }
+        return false;
     }
 
     public void Clear()
     {
-        TerrainManager.Singleton.heightMapGenerated = false;
-        TerrainManager.Singleton.MyData.Clear();
-        Debug.Log("height map has been cleared");
+
+        originalOceanSet.Clear();
+        if (myData != null)
+        {
+            myData.Clear();
+            data.SetHeights(0, 0, myData.finalElevation);
+        }
     }
 
 }

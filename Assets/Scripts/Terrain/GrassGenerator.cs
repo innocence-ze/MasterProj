@@ -7,7 +7,7 @@ using UnityEngine;
 [RequireComponent(typeof(TerrainManager))]
 public class GrassGenerator : MonoBehaviour, IGenerator
 {
-    public int seed = 0;
+    int seedOffset = 0;
     //perlin noise
     public float frequency = 1;
     public float lacunarity = 2;
@@ -21,47 +21,27 @@ public class GrassGenerator : MonoBehaviour, IGenerator
     public float noiseThreshold = 0.5f;
     [Range(0,90)]
     public float maxSteepness = 70;
-    [Range(0,50)]
-    public float minHeight = Utils.seaLevel;
-    [Range(0, 50)]
-    public float maxHeight = Utils.mapHeight;
+    public float minHeight = 15;
+    public float maxHeight = 40;
 
-    public int density;
+    public int density = 5;
 
     public List<Texture2D> grassTextures = new List<Texture2D>();
 
     TerrainData data;
     MyTerrainData myData;
 
-    private void OnValidate()
-    {
-        if (maxHeight > Utils.mapHeight)
-            maxHeight = Utils.mapHeight;
-        if (maxHeight < Utils.seaLevel)
-            maxHeight = Utils.seaLevel;
-
-        if (minHeight < Utils.seaLevel)
-            minHeight = Utils.seaLevel;
-        if (minHeight > maxHeight)
-            minHeight = maxHeight;
-    }
-
     public void Clear()
     {
-        TerrainManager.Singleton.heightMapGenerated = false;
+        seedOffset = 0;
         TerrainManager.Singleton.Data.detailPrototypes = null;
     }
 
     public void Generate()
     {
-        if (!TerrainManager.Singleton.heightMapGenerated)
-        {
-            Debug.LogWarning("please generate height map first");
-            return;
-        }
-
+        Clear();
         DetailPrototype[] detailPrototypes = new DetailPrototype[grassTextures.Count];
-        for (int i = 0; i < grassTextures.Count; i++) detailPrototypes[i] = new DetailPrototype() { prototypeTexture = grassTextures[i], minHeight = 0.5f, maxHeight = 1, };
+        for (int i = 0; i < grassTextures.Count; i++) detailPrototypes[i] = new DetailPrototype() { prototypeTexture = grassTextures[i], minHeight = 0.4f, maxHeight = 0.7f, };
         
         data = TerrainManager.Singleton.Data;
         myData = TerrainManager.Singleton.MyData;
@@ -80,8 +60,9 @@ public class GrassGenerator : MonoBehaviour, IGenerator
                     float scaledX = 1.0f * j / data.heightmapResolution;
                     float scaledZ = 1.0f * i / data.heightmapResolution;
                     float angle = data.GetSteepness(scaledX, scaledZ);
-                    if(noiseData[j,i] > noiseThreshold && angle <maxSteepness && height > minHeight && height < maxHeight)
+                    if(noiseData[i,j] > noiseThreshold && angle <maxSteepness && height > minHeight && height < maxHeight && myData.type[i,j] == TerrainType.land)
                     {
+                        Random.InitState(Utils.Seed + (seedOffset++));
                         var d = density + Random.Range(-(density % 5 + 1), density % 5 + 1);
                         detailLayer[i, j] = d <= 0 ? density : d;
 
@@ -107,7 +88,7 @@ public class GrassGenerator : MonoBehaviour, IGenerator
             data.detailWidth,
             new Perlin
             {
-                Seed = seed,
+                Seed = Utils.Seed,
                 Frequency = frequency,
                 Lacunarity = lacunarity,
                 Persistence = persistence,

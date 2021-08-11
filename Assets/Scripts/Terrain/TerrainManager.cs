@@ -8,6 +8,7 @@ using LibNoise.Operator;
 [RequireComponent(typeof(Terrain))]
 public class TerrainManager : MonoBehaviour
 {
+    public int seed;
     [Range(16,1024)]
     public int mapSize = 256;
     [Range(1, 100)]
@@ -35,16 +36,46 @@ public class TerrainManager : MonoBehaviour
 
     public TerrainData Data { get; private set; }
     public MyTerrainData MyData { get; private set; }
-    //[HideInInspector]
-    public bool heightMapGenerated = false;
+
+    [SerializeField]
+    List<IGenerator> generator = new List<IGenerator>();
 
     private void Start()
     {
+        var allComponents = GetComponents<Component>();
+        foreach(var c in allComponents)
+        {
+            if (c is IGenerator)
+            {
+                generator.Add(c as IGenerator);
+                Debug.Log(c.GetType());
+            }
+        }
+    }
 
+    public void Generate(int seed)
+    {
+        this.seed = seed;
+        Utils.Seed = seed;
+        for(int i = generator.Count - 1; i >= 0; i--)
+        {
+            generator[i].Clear();
+        }
+
+        foreach(var g in generator)
+        {
+            g.Generate();
+        }
+    }
+
+    private void Update()
+    {
     }
 
     private void OnValidate()
     {
+        Utils.Seed = seed;
+
         Utils.mapSize = Mathf.ClosestPowerOfTwo(mapSize);
         mapSize = Utils.mapSize;
 

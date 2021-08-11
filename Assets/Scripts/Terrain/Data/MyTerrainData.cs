@@ -1,10 +1,12 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-
+using System;
 public enum TerrainType
 {
+    unknown,
     land,
+    road,
     ocean,
     river,
 }
@@ -15,20 +17,66 @@ public class MyTerrainData
 
     public TerrainType[,]   type;
     public int[,]           waterDistance;
-    public float[,]         elevation;
     public float[,]         finalElevation;
-    public readonly Dictionary<int, List<Vector2Int>> oceanDic;
-    readonly HashSet<Vector2Int> oceanCoorSet;
-    
+    public bool[,]          hasTree;
+    HashSet<Vector2Int> oceanSet;
+    HashSet<Vector2Int> mainLandSet;
+    HashSet<Vector2Int> landContourSet;
+    HashSet<Vector2Int> riverSet;
+    HashSet<Vector2Int> roadSet;
+
+    public static void Copy(MyTerrainData src, MyTerrainData dis)
+    {
+        if (src == null)
+            throw new ArgumentNullException("src is null");
+        if (dis == null)
+            throw new ArgumentNullException("dis is null");
+        dis.Size = src.Size;
+        int arrayLength = src.type.Length;
+        Array.Copy(src.type, dis.type, arrayLength);
+        Array.Copy(src.waterDistance, dis.waterDistance, arrayLength);
+        Array.Copy(src.finalElevation, dis.finalElevation, arrayLength);
+        Array.Copy(src.hasTree, dis.hasTree, arrayLength);
+        dis.oceanSet = new HashSet<Vector2Int>(src.oceanSet);
+        dis.mainLandSet = new HashSet<Vector2Int>(src.mainLandSet);
+        dis.landContourSet = new HashSet<Vector2Int>(src.landContourSet);
+        dis.riverSet = new HashSet<Vector2Int>(src.riverSet);
+        dis.roadSet = new HashSet<Vector2Int>(src.roadSet);
+    }
+
     public MyTerrainData(int size)
     {
         Size = size;
         type = new TerrainType[size, size];
         waterDistance = new int[size, size];
-        elevation = new float[size, size];
         finalElevation = new float[size, size];
-        oceanDic = new Dictionary<int, List<Vector2Int>>();
-        oceanCoorSet = new HashSet<Vector2Int>();
+        hasTree = new bool[size, size];
+        oceanSet = new HashSet<Vector2Int>();
+        mainLandSet = new HashSet<Vector2Int>();
+        landContourSet = new HashSet<Vector2Int>();
+        riverSet = new HashSet<Vector2Int>();
+        roadSet = new HashSet<Vector2Int>();
+    }
+
+    public MyTerrainData(MyTerrainData src)
+    {
+        if(src == null)
+            throw new ArgumentNullException("src is null");
+        Size = src.Size;
+        int arrayLength = src.type.Length;
+        type = new TerrainType[Size, Size]; 
+        waterDistance = new int[Size, Size];
+        finalElevation = new float[Size, Size];
+        hasTree = new bool[Size, Size];
+        Array.Copy(src.type, type, arrayLength);
+        Array.Copy(src.waterDistance, waterDistance, arrayLength);
+        Array.Copy(src.finalElevation, finalElevation, arrayLength);
+        Array.Copy(src.hasTree, hasTree, arrayLength);
+        oceanSet = new HashSet<Vector2Int>(src.oceanSet);
+        mainLandSet = new HashSet<Vector2Int>(src.mainLandSet);
+        landContourSet = new HashSet<Vector2Int>(src.landContourSet);
+        riverSet = new HashSet<Vector2Int>(src.riverSet);
+        roadSet = new HashSet<Vector2Int>(src.roadSet);
     }
 
     public void Clear()
@@ -37,129 +85,76 @@ public class MyTerrainData
         {
             for(int j = 0; j < Size; j++)
             {
-                type[i, j] = TerrainType.land;
+                type[i, j] = TerrainType.unknown;
                 waterDistance[i, j] = int.MinValue;
-                elevation[i, j] = 0;
                 finalElevation[i, j] = 0;
+                hasTree[i, j] = false;
             }
         }
-        oceanDic.Clear();
-        oceanCoorSet.Clear();
+        oceanSet.Clear();
+        mainLandSet.Clear();
+        landContourSet.Clear();
+        riverSet.Clear();
+        roadSet.Clear();
     }
 
-    /// <summary>
-    /// 根据ocean序号获取ocean的所有坐标
-    /// </summary>
-    /// <param name="oceanIndex"></param>
-    /// <param name="oceanCooridinate"></param>
-    /// <returns></returns>
-    public bool TryGetOcean(int oceanIndex, out List<Vector2Int>oceanCooridinate)
-    {
-        return oceanDic.TryGetValue(oceanIndex, out oceanCooridinate);
-    }
+    public bool AddOceanGrid(Vector2Int coordinate) => oceanSet.Add(coordinate);
+    public bool AddOceanGrid(int x, int z) => AddOceanGrid(new Vector2Int(x, z));
 
-    /// <summary>
-    /// 获取ocean的数量
-    /// </summary>
-    /// <returns></returns>
-    public int GetOceanCount()
-    {
-        return oceanDic.Count;
-    }
+    public bool ContainOceanGrid(Vector2Int coordinate) => oceanSet.Contains(coordinate);
+    public bool ContainOceanGrid(int x, int z) => ContainOceanGrid(new Vector2Int(x, z));
 
-    /// <summary>
-    /// 添加一个新的ocean，它包含当前这个坐标，并返回ocean序号
-    /// </summary>
-    /// <param name="curCoor"></param>
-    public int AddNewOcean(Vector2Int curCoor)
-    {
-        oceanDic.Add(oceanDic.Count, new List<Vector2Int>());
-        oceanDic[oceanDic.Count - 1].Add(curCoor);
-        oceanCoorSet.Add(curCoor);
-        return oceanDic.Count - 1;
-    }
+    public bool RemoveOceanGrid(Vector2Int coordinate) => oceanSet.Remove(coordinate);
+    public bool RemoveOceanGrid(int x, int z) => RemoveOceanGrid(new Vector2Int(x, z));
 
-    /// <summary>
-    /// 把序号为index1 和 index2 的两个ocean合并
-    /// </summary>
-    /// <param name="index1"></param>
-    /// <param name="index2"></param>
-    /// <returns></returns>
-    public int CombineOcean(int index1, int index2)
-    {
-        if (index1 > index2)
-        {
-            var temp = index2;
-            index2 = index1;
-            index1 = temp;
-        }
-        if (index1 < 0 || index2 >= oceanDic.Count)
-        {
-            return -1;
-        }
-        
-        oceanDic[index1].AddRange(oceanDic[index2]);
-        for(int i = index2; i < oceanDic.Count - 1; i++)
-        {
-            oceanDic[i] = oceanDic[i + 1];
-        }
-        oceanDic.Remove(oceanDic.Count - 1);
-        return index1;
-    }
+    public HashSet<Vector2Int> GetOceanSet => oceanSet;
 
-    /// <summary>
-    /// 把当前坐标添加到当前序号的ocean中
-    /// </summary>
-    /// <param name="oceanIndex"></param>
-    /// <param name="oceanCooridinate"></param>
-    /// <returns></returns>
-    public bool AddToCurOcean(int oceanIndex, Vector2Int oceanCooridinate)
-    {
-        if (oceanDic.ContainsKey(oceanIndex))
-        {
-            if (!oceanDic[oceanIndex].Contains(oceanCooridinate))
-            {
-                oceanDic[oceanIndex].Add(oceanCooridinate);
-                oceanCoorSet.Add(oceanCooridinate);
-                return true;
-            }
-        }
-        return false;
-    }
 
-    /// <summary>
-    /// 获取当前序号的ocean中的坐标数量
-    /// </summary>
-    /// <param name="oceanIndex"></param>
-    /// <returns></returns>
-    public int GetCurOceanCount(int oceanIndex)
-    {
-        if (!oceanDic.ContainsKey(oceanIndex))
-            return 0;
-        return oceanDic[oceanIndex].Count;
-    }
+    public bool AddMainLandGrid(Vector2Int coordinate) => mainLandSet.Add(coordinate);
+    public bool AddMainLandGrid(int x, int z) => AddMainLandGrid(new Vector2Int(x, z));
 
-    /// <summary>
-    /// 获得当前坐标的ocean的序号，若无则返回-1
-    /// </summary>
-    /// <param name="coordinate"></param>
-    /// <returns></returns>
-    public int GetCurOceanIndex(Vector2Int coordinate)
-    {
-        if (coordinate.x < 0 || coordinate.x >= Utils.mapSize || coordinate.y < 0 || coordinate.y >= Utils.mapSize)
-            return -1;
-        if (waterDistance[coordinate.x, coordinate.y] != -1)
-            return -1;
+    public bool ContainMainLandGrid(Vector2Int coordinate) => mainLandSet.Contains(coordinate);
+    public bool ContainMainLandGrid(int x, int z) => ContainMainLandGrid(new Vector2Int(x, z));
 
-        if (!oceanCoorSet.Contains(coordinate))
-            return -1;
+    public bool RemoveMainLandGrid(Vector2Int coordinate) => mainLandSet.Remove(coordinate);
+    public bool RemoveMainLandGrid(int x, int z) => RemoveMainLandGrid(new Vector2Int(x, z));
 
-        foreach(var d in oceanDic)
-        {
-            if (d.Value.Contains(coordinate))
-                return d.Key;
-        }
-        return -1;
-    }
+    public HashSet<Vector2Int> GetMainLandSet => mainLandSet;
+
+
+    public bool AddLandContourGrid(Vector2Int coordinate) => landContourSet.Add(coordinate);
+    public bool AddLandContourGrid(int x, int z) => AddLandContourGrid(new Vector2Int(x, z));
+
+    public bool ContainLandContourGrid(Vector2Int coordinate) => landContourSet.Contains(coordinate);
+    public bool ContainLandContourGrid(int x, int z) => ContainLandContourGrid(new Vector2Int(x, z));
+
+    public bool RemoveLandContourGrid(Vector2Int coordinate) => landContourSet.Remove(coordinate);
+    public bool RemoveLandContourGrid(int x, int z) => RemoveLandContourGrid(new Vector2Int(x, z));
+
+    public HashSet<Vector2Int> GetLandContourSet => landContourSet;
+
+
+    public bool AddRiverGrid(Vector2Int coordinate) => riverSet.Add(coordinate);
+    public bool AddRiverGrid(int x, int z) => AddRiverGrid(new Vector2Int(x, z));
+
+    public bool ContainRiverGrid(Vector2Int coordinate) => riverSet.Contains(coordinate);
+    public bool ContainRiverGrid(int x, int z) => ContainRiverGrid(new Vector2Int(x, z));
+
+    public bool RemoveRiverGrid(Vector2Int coordinate) => riverSet.Remove(coordinate);
+    public bool RemoveRiverGrid(int x, int z) => RemoveRiverGrid(new Vector2Int(x, z));
+
+    public HashSet<Vector2Int> GetRiverSet => riverSet;
+
+
+    public bool AddRoadGrid(Vector2Int coordinate) => roadSet.Add(coordinate);
+    public bool AddRoadGrid(int x, int z) => AddRoadGrid(new Vector2Int(x, z));
+
+    public bool ContainRoadGrid(Vector2Int coordinate) => roadSet.Contains(coordinate);
+    public bool ContainRoadGrid(int x, int z) => ContainRoadGrid(new Vector2Int(x, z));
+
+    public bool RemoveRoadGrid(Vector2Int coordinate) => roadSet.Remove(coordinate);
+    public bool RemoveRoadGrid(int x, int z) => RemoveRoadGrid(new Vector2Int(x, z));
+
+    public HashSet<Vector2Int> GetRoadSet => roadSet;
 
 }

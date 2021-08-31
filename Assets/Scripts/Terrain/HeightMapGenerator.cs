@@ -6,7 +6,6 @@ using System.Collections.Generic;
 using UnityEngine;
 using System;
 
-[RequireComponent(typeof(TerrainManager))]
 public class HeightMapGenerator : MonoBehaviour, IGenerator
 {
     [Header("NoisePara")]
@@ -55,32 +54,19 @@ public class HeightMapGenerator : MonoBehaviour, IGenerator
     public float falloffPower = 1;
     public float falloffRange = 10;
 
+    public bool useCombineOcean = true;
+
     MyTerrainData myData;
     TerrainData data;
     float[,] heightData;
     int[,] oceanDis;
     readonly HashSet<Vector2Int> originalOceanSet = new HashSet<Vector2Int>();
 
-    private void OnDrawGizmos()
-    {
-        if (myData == null) return;
-        Gizmos.color = Color.red;
-        //for (int i = 0; i < oceanDis.GetLength(0); i++)
-        //{
-        //    for (int j = 0; j < oceanDis.GetLength(1); j++)
-        //    {
-        //        if (oceanDis[i, j] >= 0)
-        //        {
-        //            Gizmos.DrawCube(new Vector3(j - Utils.mapSize / 2, 50, i - Utils.mapSize / 2), Vector3.one);
-        //        }
-        //    }
-        //}
-    }
 
     public void Generate()
     {
+        var t = Time.realtimeSinceStartup;
         Clear();
-
         myData = TerrainManager.Singleton.MyData;
         data = TerrainManager.Singleton.Data;
         oceanDis = myData.waterDistance;
@@ -90,28 +76,33 @@ public class HeightMapGenerator : MonoBehaviour, IGenerator
 
         var falloffData = CreateFallOff();
 
-        for (int i = 0; i < heightData.GetLength(0); i++)
+        if (useFallOff)
         {
-            for (int j = 0; j < heightData.GetLength(1); j++)
+            for (int i = 0; i < heightData.GetLength(0); i++)
             {
-                heightData[i, j] *= 0.6f;
-                heightData[i, j] += 0.4f * falloffData[i, j];
-                heightData[i, j] = Mathf.Clamp01(heightData[i, j]);
-                if (heightData[i, j] * Utils.mapHeight <= Utils.seaLevel)
-                    originalOceanSet.Add(new Vector2Int(i, j));
+                for (int j = 0; j < heightData.GetLength(1); j++)
+                {
+                    heightData[i, j] *= 0.6f;
+                    heightData[i, j] += 0.4f * falloffData[i, j];
+                    heightData[i, j] = Mathf.Clamp01(heightData[i, j]);
+                    if (heightData[i, j] * Utils.mapHeight <= Utils.seaLevel)
+                        originalOceanSet.Add(new Vector2Int(i, j));
+                }
             }
+
         }
-        Debug.Log("height map has been generated completely");
 
-        FindOcean();
+        if (useCombineOcean)
+        {
 
-        SetOceanDistance();
-        Debug.Log("sea distance map has been generated completely");
+            FindOcean();
 
-        SetMainLand();
+            SetOceanDistance();
 
+            SetMainLand();
+        }
         data.SetHeights(0, 0, heightData);
-
+        Debug.Log(this.GetType().ToString() + (Time.realtimeSinceStartup - t));
     }
 
     float[,] CreateOriginalHeightMap()
@@ -143,7 +134,6 @@ public class HeightMapGenerator : MonoBehaviour, IGenerator
             Frequency = finalFrequency
         };
 
-        //讲noise通过Noise2D传入MyData中
         var heightMapBuilder = new Noise2D(Utils.mapSize, Utils.mapSize, finalTerrain);
         heightMapBuilder.GeneratePlanar(xOffset, xOffset + xSize, zOffset, zOffset + zSize);
         return heightMapBuilder.GetNormalizedData();

@@ -5,7 +5,6 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-[RequireComponent(typeof(TerrainManager))]
 public class TreeGenerator : MonoBehaviour,IGenerator
 {
     int seedOffset = 0;
@@ -52,6 +51,7 @@ public class TreeGenerator : MonoBehaviour,IGenerator
 
     public void Generate()
     {
+        var t = Time.realtimeSinceStartup;
         Clear();
         treeRoot = new GameObject("TreeRoot");
         treeRoot.transform.position = new Vector3(-Utils.mapSize / 2, -Utils.seaLevel, -Utils.mapSize / 2);
@@ -78,6 +78,7 @@ public class TreeGenerator : MonoBehaviour,IGenerator
             }
         }
 
+        Debug.Log(this.GetType().ToString() + (Time.realtimeSinceStartup - t));
     }
 
     List<Vector2Int> PoissonDisc(int size, int r)
@@ -145,7 +146,13 @@ public class TreeGenerator : MonoBehaviour,IGenerator
         float scaledX = 1.0f * x / data.heightmapResolution;
         float scaledZ = 1.0f * z / data.heightmapResolution;
         float angle = data.GetSteepness(scaledX, scaledZ);
-        return angle < maxSteepness && height > minHeight && height < maxHeight;
+        return angle < maxSteepness && height > minHeight && height < maxHeight && !IsNextRoad(z, x);
+    }
+
+    bool IsNextRoad(int x, int z)
+    {
+        return myData.ContainRoadGrid(x, z) || myData.ContainRoadGrid(x, z + 1) || myData.ContainRoadGrid(x, z - 1) ||
+            myData.ContainRoadGrid(x + 1, z) || myData.ContainRoadGrid(x - 1, z);
     }
 
     bool IsIsolationPos(int x, int z, int range = 1)

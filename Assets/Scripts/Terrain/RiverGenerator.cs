@@ -19,6 +19,9 @@ public class RiverGenerator : MonoBehaviour, IGenerator
     public AnimationCurve riverWidthWholeLengthCurve;
     public AnimationCurve riverBankCurve;
 
+    public Material riverMat;
+    public float riverOffset = 0.55f;
+
     List<Vector2Int> landContours = new List<Vector2Int>();
     //两个zone是河流与海岸线上点的最小间距的区域
     readonly HashSet<Vector2Int> contourZone = new HashSet<Vector2Int>();
@@ -31,6 +34,11 @@ public class RiverGenerator : MonoBehaviour, IGenerator
     readonly List<Vector2Int> riverBottomPoints = new List<Vector2Int>();
     readonly List<Vector2Int> riverPoints = new List<Vector2Int>();
     readonly HashSet<Vector2Int> bottomSet = new HashSet<Vector2Int>();
+
+    List<Vector2> uvs = new List<Vector2>();
+    List<Vector3> vertices = new List<Vector3>();
+    List<int> index = new List<int>();
+    GameObject riverObj;
 
     float highestBank = 0;
 
@@ -51,11 +59,17 @@ public class RiverGenerator : MonoBehaviour, IGenerator
         riverBottomPoints.Clear();
         riverPoints.Clear();
         bottomSet.Clear();
+        uvs.Clear();
+        vertices.Clear();
+        index.Clear();
         seedOffset = 0;
+        if (riverObj != null)
+            DestroyImmediate(riverObj);
     }
 
     public void Generate()
     {
+        var t = Time.realtimeSinceStartup;
         Clear();
         originalData = new MyTerrainData(TerrainManager.Singleton.MyData);
         myData = TerrainManager.Singleton.MyData;
@@ -88,9 +102,13 @@ public class RiverGenerator : MonoBehaviour, IGenerator
                     tempList.Add(new Vector3(curNode.x, myData.finalElevation[curNode.x, curNode.z] * Utils.mapHeight, curNode.z));
                     curNode = curNode.GetChildren();
                 }
+
                 //获取河流长度与河流中的所有节点的坐标
                 float length = Utils.PathLength(tempList.ToArray(), nodeDistance * nodeDistance, out List<Vector3> riverWayPoints);
                 var tempRiverWayPoints = new List<Vector3>();
+                
+                
+
                 foreach (var p in riverWayPoints)
                 {
                     int x = Utils.Floor(p.x), z = Utils.Floor(p.z); 
@@ -102,12 +120,24 @@ public class RiverGenerator : MonoBehaviour, IGenerator
                     bottomSet.Add(pos);
                 }
                 //计算河岸
-                riverBanks.AddRange(RiverBankCalculate(ref tempRiverWayPoints,2));
+                var bank = RiverBankCalculate(ref riverWayPoints, 2);
+                riverBanks.AddRange(bank);
+                int offset = vertices.Count;
+                for (int k = 0; k < bank.Count; k += 2)
+                {
+                    CalculateRiverVertices(bank[k], bank[k + 1], riverBottomPoints[k / 2]);
+                    if (k < bank.Count - 2)
+                    {
+                        index.AddRange(new int[6] {k + 0 + offset, k + 2 + offset, k + 1 + offset,
+                                                   k + 2 + offset, k + 3 + offset, k + 1 + offset});
+                    }
+                }
+
                 i++;
             }
         }
 
-        for(int i = 0; i < riverBottomPoints.Count; i++)
+        for (int i = 0; i < riverBottomPoints.Count; i++)
         {
             CalculateOneSideRiverElevation(riverBanks[2 * i], riverBottomPoints[i]);
             CalculateOneSideRiverElevation(riverBanks[2 * i + 1], riverBottomPoints[i]);
@@ -117,9 +147,51 @@ public class RiverGenerator : MonoBehaviour, IGenerator
         myData.GetMainLandSet.RemoveWhere(x => myData.GetRiverSet.Contains(x));
         AdjustMainlandElevation();
 
+        GenerateRiverObj();
+
         //应用到data上
         data.SetHeights(0, 0, myData.finalElevation);
+
+
+        Debug.Log(this.GetType().ToString() + (Time.realtimeSinceStartup - t));
     }
+
+    void CalculateRiverVertices(Vector2Int bank1, Vector2Int bank2, Vector2Int bottom)
+    {
+        Vector2 _bank1 = bank1 + (Vector2)(bank1 - bank2) * 0.4f;
+        Vector2 _bank2 = bank2 + (Vector2)(bank2 - bank1) * 0.4f;
+        float y = GetFinalElevation(bottom);
+        if (contourZone.Contains(bank1) && contourZone.Contains(bank2))
+        {
+            y -= riverOffset * 0.4f;
+        }
+        Vector3 v1 = new Vector3(_bank1.y, y, _bank1.x),
+                v2 = new Vector3(_bank2.y, y, _bank2.x);
+        Vector2 uv1 = new Vector2(_bank1.x / Utils.mapSize, _bank1.y / Utils.mapSize),
+                uv2 = new Vector2(_bank2.x / Utils.mapSize, _bank2.y / Utils.mapSize);
+        vertices.AddRange(new Vector3[2] { v1, v2 });
+        uvs.AddRange(new Vector2[2] { uv1, uv2 });
+    }
+
+    void GenerateRiverObj()
+    {
+        riverObj = new GameObject("Rivers");
+        riverObj.transform.position = new Vector3(-Utils.mapSize / 2, riverOffset, -Utils.mapSize / 2);
+        var render = riverObj.AddComponent<MeshRenderer>();
+        var filter = riverObj.AddComponent<MeshFilter>();
+        var mesh = new Mesh();
+        mesh.name = "RiverMesh";
+        mesh.vertices = vertices.ToArray();
+        mesh.uv = uvs.ToArray();
+        mesh.triangles = index.ToArray();
+        filter.sharedMesh = mesh;
+        render.sharedMaterial = riverMat;
+        mesh.RecalculateNormals();
+        mesh.RecalculateBounds();
+        mesh.RecalculateTangents();
+    }
+
+    float GetFinalElevation(Vector2Int node) => myData.finalElevation[node.x, node.y] * Utils.mapHeight - Utils.seaLevel;
 
     void AdjustMainlandElevation()
     {
@@ -251,14 +323,23 @@ public class RiverGenerator : MonoBehaviour, IGenerator
         {
             for (int j = -i; j < i; j++)
             {
-                Vector2Int v1 = new Vector2Int(x + j, z + i), v2 = new Vector2Int(x + i, z - j),
-                           v3 = new Vector2Int(x - j, z - i), v4 = new Vector2Int(x - i, z + j);
+                Vector2Int v1 = RangedVector2Int(x + j, z + i), v2 = RangedVector2Int(x + i, z - j),
+                           v3 = RangedVector2Int(x - j, z - i), v4 = RangedVector2Int(x - i, z + j);
                 if (myData.waterDistance[v1.x, v1.y] > i) myData.waterDistance[v1.x, v1.y] = i;
                 if (myData.waterDistance[v2.x, v2.y] > i) myData.waterDistance[v2.x, v2.y] = i;
                 if (myData.waterDistance[v3.x, v3.y] > i) myData.waterDistance[v3.x, v3.y] = i;
                 if (myData.waterDistance[v4.x, v4.y] > i) myData.waterDistance[v4.x, v4.y] = i;
             }
         }
+    }
+
+    Vector2Int RangedVector2Int(int x, int y)
+    {
+        if (x < 0) x = 0;
+        if (y < 0) y = 0;
+        if (x >= Utils.mapSize) x = Utils.mapSize - 1;
+        if (y >= Utils.mapSize) y = Utils.mapSize - 1;
+        return new Vector2Int(x, y);
     }
 
     //resultwaypoints是从入海口到发源口的

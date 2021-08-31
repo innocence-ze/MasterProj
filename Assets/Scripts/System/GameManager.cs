@@ -11,6 +11,7 @@ public class GameManager : MonoBehaviour
     public TMP_InputField seedInput;
     int seedNum;
 
+
     public static GameManager Singleton
     {
         get
@@ -28,33 +29,45 @@ public class GameManager : MonoBehaviour
     }
     private static GameManager singleton = null;
 
-    private void Start()
-    {
-        generateButton.onClick.AddListener(Generate);
-        clearButton.onClick.AddListener(Clear);
-        quitButton.onClick.AddListener(Quit);
-    }
-
     private void Update()
     {
         if (Input.GetKeyDown(KeyCode.KeypadEnter) || Input.GetKeyDown(KeyCode.Return))
             Generate();
+        if (Input.GetKeyDown(KeyCode.Escape))
+            Quit();
     }
 
 
-    void Generate()
+    public void Generate()
     {
         int.TryParse(seedInput.text, out seedNum);
         TerrainManager.Singleton.Generate(seedNum);
     }
 
-    void Clear()
+    public void Clear()
     {
         UnityEngine.SceneManagement.SceneManager.LoadScene(UnityEngine.SceneManagement.SceneManager.GetActiveScene().name);
     }
 
-    void Quit()
+    public void Quit()
     {
-
+#if UNITY_EDITOR
+        UnityEditor.EditorApplication.isPlaying = false;
+#else
+        Application.Quit();
+#endif
     }
+
+    public void ShowBubble(GameObject bubble)
+    {
+        bubble.SetActive(true);
+        StartCoroutine(HideBubble(bubble));
+    }
+    WaitForSeconds bubbleTimer = new WaitForSeconds(8);
+    IEnumerator HideBubble(GameObject bubble)
+    {
+        yield return bubbleTimer;
+        bubble.SetActive(false);
+    }
+
 }

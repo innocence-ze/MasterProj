@@ -4,7 +4,6 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-[RequireComponent(typeof(TerrainManager))]
 public class GrassGenerator : MonoBehaviour, IGenerator
 {
     int seedOffset = 0;
@@ -39,6 +38,7 @@ public class GrassGenerator : MonoBehaviour, IGenerator
 
     public void Generate()
     {
+        var t = Time.realtimeSinceStartup;
         Clear();
         DetailPrototype[] detailPrototypes = new DetailPrototype[grassTextures.Count];
         for (int i = 0; i < grassTextures.Count; i++) detailPrototypes[i] = new DetailPrototype() { prototypeTexture = grassTextures[i], minHeight = 0.4f, maxHeight = 0.7f, };
@@ -60,10 +60,9 @@ public class GrassGenerator : MonoBehaviour, IGenerator
                     float scaledX = 1.0f * j / data.heightmapResolution;
                     float scaledZ = 1.0f * i / data.heightmapResolution;
                     float angle = data.GetSteepness(scaledX, scaledZ);
-                    if(noiseData[i,j] > noiseThreshold && angle <maxSteepness && height > minHeight && height < maxHeight && myData.type[i,j] == TerrainType.land)
+                    if(angle <maxSteepness && height > minHeight && height < maxHeight && myData.type[i,j] == TerrainType.land && !IsNextRoad(i, j))
                     {
-                        Random.InitState(Utils.Seed + (seedOffset++));
-                        var d = density + Random.Range(-(density % 5 + 1), density % 5 + 1);
+                        var d = (int)(noiseData[i, j] * density);
                         detailLayer[i, j] = d <= 0 ? density : d;
 
                     }
@@ -75,9 +74,15 @@ public class GrassGenerator : MonoBehaviour, IGenerator
             }
             data.SetDetailLayer(0, 0, k, detailLayer);
         }
-        Debug.Log("grass generated");
 
+        Debug.Log(this.GetType().ToString() + (Time.realtimeSinceStartup - t));
 
+    }
+
+    bool IsNextRoad(int x, int z)
+    {
+        return myData.ContainRoadGrid(x, z) || myData.ContainRoadGrid(x, z + 1) || myData.ContainRoadGrid(x, z - 1) ||
+            myData.ContainRoadGrid(x + 1, z) || myData.ContainRoadGrid(x - 1, z);
     }
 
     float[,] CreateNoiseData()

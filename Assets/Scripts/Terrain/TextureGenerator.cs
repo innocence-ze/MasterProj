@@ -12,7 +12,7 @@ public class TextureGenerator : MonoBehaviour, IGenerator
 
     public void Generate()
     {
-
+        var t = Time.realtimeSinceStartup;
         if(textures == null)
         {
             Debug.LogError("Texture list is not setted");
@@ -43,7 +43,8 @@ public class TextureGenerator : MonoBehaviour, IGenerator
                 float scaledAngle = data.GetSteepness(scaledX, scaledZ) / 90.0f;
                 for(int k = 0; k < data.alphamapLayers; k++)
                 {
-                    textureMap[i, j, k] = textures[k].GetWeight(scaledHeight, scaledAngle, Mathf.Clamp01((1.0f * myData.waterDistance[i, j]) / Utils.maxOceanDis));
+                    textureMap[i, j, k] = textures[k].GetWeight
+                        (scaledHeight, scaledAngle, Mathf.Clamp01((1.0f * myData.waterDistance[i, j]) / Utils.maxOceanDis));
                     textureSum[i, j] += textureMap[i, j, k];
                 }
                 //normalized
@@ -55,6 +56,8 @@ public class TextureGenerator : MonoBehaviour, IGenerator
         }
 
         data.SetAlphamaps(0, 0, textureMap);
+
+        Debug.Log(this.GetType().ToString() + (Time.realtimeSinceStartup - t));
     }
 
 
